@@ -44,43 +44,52 @@ func calculator(answer string, view bool) (int, error) {
 	proteins, directions := divider(answer)
 	proteinIndices := proteins2Indices(proteins)
 	length := len(proteins)
-	size := len(answer) + 2
-	map_ := make([][]int, size)
-	for i := range map_ {
-		map_[i] = make([]int, size)
-		for j := range map_[i] {
-			map_[i][j] = -1
-		}
-	}
-	location := [2]int{length, length}
-	energy := 0
-	pLast := -1
 
-	for i, pIndex := range proteinIndices {
-		x, y := location[0], location[1]
-		if map_[y][x] == -1 {
-			map_[y][x] = pIndex
+	x, y := 0, 0
+	points := [][2]int{{x, y}}
+	xmin, xmax, ymin, ymax := 0, 0, 0, 0
+
+	for i := 0; i < length-1; i++ {
+		vec := direction2Vec(rune(directions[i]))
+		x += vec[0]
+		y += vec[1]
+		points = append(points, [2]int{x, y})
+		xmin, xmax = min(xmin, x), max(xmax, x)
+		ymin, ymax = min(ymin, y), max(ymax, y)
+	}
+
+	n_x := xmax - xmin + 1
+	n_y := ymax - ymin + 1
+
+	map_ := make([][]int, n_y+2)
+	for i := range map_ {
+		map_[i] = make([]int, n_x+2)
+	}
+
+	energy := 0
+
+	for i, point := range points {
+		x, y := point[0]-xmin+1, point[1]-ymin+1
+		pIndex := proteinIndices[i]
+		if map_[y][x] == 0 {
+			map_[y][x] = i + 1
 		} else {
-			return 0, errors.New("error! wrong structure!")
+			return 0, errors.New("error! wrong structure")
 		}
-		if i != 0 {
-			energy += linkW[pIndex][pLast] - unlinkW[pIndex][pLast]
-			for _, dr := range "LURD" {
-				vec := direction2Vec(rune(dr))
-				x_, y_ := location[0]+vec[0], location[1]+vec[1]
-				pNeighbor := map_[y_][x_]
-				if pNeighbor != -1 {
+		for _, dr := range "LURD" {
+			vec := direction2Vec(rune(dr))
+			x_, y_ := x+vec[0], y+vec[1]
+			if map_[y_][x_] != 0 {
+				pNeighbor := proteinIndices[map_[y_][x_]-1]
+				if map_[y][x]-map_[y_][x_] == 1 {
+					energy += linkW[pIndex][pNeighbor]
+				} else {
 					energy += unlinkW[pIndex][pNeighbor]
 				}
 			}
 		}
-		if i != length-1 {
-			vec := direction2Vec(rune(directions[i]))
-			location[0] += vec[0]
-			location[1] += vec[1]
-		}
-		pLast = pIndex
 	}
+
 	if view {
 		drawProtein(answer)
 	}
@@ -88,6 +97,20 @@ func calculator(answer string, view bool) (int, error) {
 }
 func drawProtein(answer string) {
 	fmt.Println(answer)
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
 }
 
 /*
